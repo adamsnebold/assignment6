@@ -1,133 +1,139 @@
 /*
  * In this file, you will write the structures and functions needed to
- * implement a priority queue.  Feel free to implement any helper functions
- * you need in this file to implement a priority queue.  Make sure to add your
- * name and @oregonstate.edu email address below:
+ * implement a priority queue using a heap.
  *
  * Name:
  * Email:
  */
 
 #include <stdlib.h>
-
+#include <assert.h>
 #include "pq.h"
+#include "dynarray.h"
 
 /*
- * This is the structure that represents a priority queue.  You must define
- * this struct to contain the data needed to implement a priority queue.
- * in addition, you want to define an element struct with both data and priority, 
- * corresponding to the elements of the priority queue. 
+ * Structure for a priority queue element containing data and priority.
  */
-struct pq;
-
+struct pq_element {
+    void* data;
+    int priority;
+};
 
 /*
- * This function should allocate and initialize an empty priority queue and
- * return a pointer to it.
+ * Priority queue structure using a dynamic array for heap storage.
  */
+struct pq {
+    struct dynarray* heap;
+};
+
+/* Helper functions */
+void _swap(struct pq_element* a, struct pq_element* b) {
+    struct pq_element temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+void _heapify_up(struct pq* pq, int index) {
+    if (index == 0) return;
+
+    int parent = (index - 1) / 2;
+    struct pq_element* curr = (struct pq_element*)dynarray_get(pq->heap, index);
+    struct pq_element* par = (struct pq_element*)dynarray_get(pq->heap, parent);
+
+    if (curr->priority > par->priority) {
+        _swap(curr, par);
+        _heapify_up(pq, parent);
+    }
+}
+
+void _heapify_down(struct pq* pq, int index) {
+    int size = dynarray_length(pq->heap);
+    int left = 2 * index + 1;
+    int right = 2 * index + 2;
+    int largest = index;
+
+    if (left < size) {
+        struct pq_element* left_child = (struct pq_element*)dynarray_get(pq->heap, left);
+        struct pq_element* curr = (struct pq_element*)dynarray_get(pq->heap, largest);
+        if (left_child->priority > curr->priority) {
+            largest = left;
+        }
+    }
+
+    if (right < size) {
+        struct pq_element* right_child = (struct pq_element*)dynarray_get(pq->heap, right);
+        struct pq_element* curr = (struct pq_element*)dynarray_get(pq->heap, largest);
+        if (right_child->priority > curr->priority) {
+            largest = right;
+        }
+    }
+
+    if (largest != index) {
+        _swap((struct pq_element*)dynarray_get(pq->heap, index),
+              (struct pq_element*)dynarray_get(pq->heap, largest));
+        _heapify_down(pq, largest);
+    }
+}
+
+/* Priority Queue Functions */
 struct pq* pq_create() {
-  return NULL;
+    struct pq* pq = malloc(sizeof(struct pq));
+    assert(pq);
+    pq->heap = dynarray_create();
+    return pq;
 }
 
-
-/*
- * This function should free the memory allocated to a given priority queue.
- * Note that this function SHOULD NOT free the individual elements stored in
- * the priority queue.  That is the responsibility of the caller.
- *
- * Params:
- *   pq - the priority queue to be destroyed.  May not be NULL.
- */
 void pq_free(struct pq* pq) {
-
+    int size = dynarray_length(pq->heap);
+    for (int i = 0; i < size; i++) {
+        free(dynarray_get(pq->heap, i));
+    }
+    dynarray_free(pq->heap);
+    free(pq);
 }
 
-
-/*
- * This function should return 1 if the specified priority queue is empty and
- * 0 otherwise.
- *
- * Params:
- *   pq - the priority queue whose emptiness is to be checked.  May not be
- *     NULL.
- *
- * Return:
- *   Should return 1 if pq is empty and 0 otherwise.
- */
 int pq_isempty(struct pq* pq) {
-  return 1;
+    return dynarray_length(pq->heap) == 0;
 }
 
-
-/*
- * This function should insert a given element into a priority queue with a
- * specified priority value.  Note that in this implementation, higher priority
- * values are given precedent, and higher place in the queue.  In other words, the
- * element in the priority queue with the highest priority value should be the
- * FIRST one returned.
- *
- * Params:
- *   pq - the priority queue into which to insert an element.  May not be
- *     NULL.
- *   data - the data value to be inserted into pq.
- *   priority - the priority value to be assigned to the newly-inserted
- *     element.  Note that in this implementation, higher priority values
- *     should correspond to the first elements.  In other words,
- *     the element in the priority queue with the highest priority value should
- *     be the FIRST one returned.
- */
 void pq_insert(struct pq* pq, void* data, int priority) {
-
+    struct pq_element* elem = malloc(sizeof(struct pq_element));
+    assert(elem);
+    elem->data = data;
+    elem->priority = priority;
+    dynarray_insert(pq->heap, dynarray_length(pq->heap), elem);
+    _heapify_up(pq, dynarray_length(pq->heap) - 1);
 }
 
-
-/*
- * This function should return the data of the first element in a priority
- * queue, i.e. the data associated with the element with highest priority value.
- *
- * Params:
- *   pq - the priority queue from which to fetch a value.  May not be NULL or
- *     empty.
- *
- * Return:
- *   Should return the data of the first item in pq, i.e. the item with
- *   max priority value.
- */
 void* pq_max(struct pq* pq) {
-  return NULL;
+    assert(!pq_isempty(pq));
+    struct pq_element* elem = (struct pq_element*)dynarray_get(pq->heap, 0);
+    return elem->data;
 }
 
-
-/*
- * This function should return the priority value of the first item in a
- * priority queue, i.e. the item with highest priority value.
- *
- * Params:
- *   pq - the priority queue from which to fetch a priority value.  May not be
- *     NULL or empty.
- *
- * Return:
- *   Should return the priority value of the first item in pq, i.e. the item
- *   with highest priority value.
- */
 int pq_max_priority(struct pq* pq) {
-  return 0;
+    assert(!pq_isempty(pq));
+    struct pq_element* elem = (struct pq_element*)dynarray_get(pq->heap, 0);
+    return elem->priority;
 }
 
-
-/*
- * This function should return the value of the first item in a priority
- * queue, i.e. the item with highest priority value, and then remove that item
- * from the queue.
- *
- * Params:
- *   pq - the priority queue from which to remove a value.  May not be NULL or
- *     empty.
- *
- * Return:
- *   Should return the value of the first item in pq, i.e. the item with
- *   highest priority value.
- */
 void* pq_max_dequeue(struct pq* pq) {
-  return NULL;
+    assert(!pq_isempty(pq));
+
+    struct pq_element* max_elem = (struct pq_element*)dynarray_get(pq->heap, 0);
+    void* max_data = max_elem->data;
+
+    int last_index = dynarray_length(pq->heap) - 1;
+    if (last_index < 0) return NULL;  // Prevent invalid access
+
+    struct pq_element* last_elem = (struct pq_element*)dynarray_get(pq->heap, last_index);
+    dynarray_set(pq->heap, 0, last_elem);
+    dynarray_remove(pq->heap, last_index);
+
+    free(max_elem);
+    if (!pq_isempty(pq)) {
+        _heapify_down(pq, 0);
+    }
+
+    return max_data;
 }
